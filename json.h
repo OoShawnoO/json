@@ -868,7 +868,6 @@ namespace hzd {
         }
 
         json_val &operator[](const json_key &key) {
-//            assert(json_data.find(key) != json_data.end());
             return json_data[key];
         }
 
@@ -882,11 +881,16 @@ namespace hzd {
 
         json& operator=(json&& cp_json_right_ref) noexcept
         {
-            std::cout << "移动构造" << std::endl;
             for (auto &&p: cp_json_right_ref.json_data) {
                 json_data.insert(std::move(p));
             }
             return *this;
+        }
+
+        friend std::ostream& operator<<(std::ostream& out,json& json_ref)
+        {
+            out << json_ref.dump();
+            return out;
         }
 
         ~json() {
