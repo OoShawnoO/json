@@ -4,6 +4,11 @@
 #ifndef JSON_H
 #define JSON_H
 
+/**
+ * @author hzd
+ * @brief json类
+ */
+
 #include <iostream>
 #include <cstring>
 #include <initializer_list>
@@ -32,6 +37,8 @@ namespace hzd {
         JSON_MISS_KEY,
         JSON_MISS_COLON,
         JSON_MISS_CURLY,
+        JSON_PARSE_INVALID_UNICODE_SURROGATE,
+        JSON_PARSE_INVALID_UNICODE_HEX,
     };
 
     class json {
@@ -648,6 +655,24 @@ namespace hzd {
             PARSE_WHITE_SPACE;
             return JSON_OK;
         }
+
+        static void* parse_hex4(json& json_ref,unsigned* u)
+        {
+            int i;
+            *u = 0;
+            for (i = 0; i < 4; i++) {
+                char ch = *(json_ref.context++);
+                *u <<= 4;
+                if      (ch >= '0' && ch <= '9')  *u |= ch - '0';
+                else if (ch >= 'A' && ch <= 'F')  *u |= ch - ('A' - 10);
+                else if (ch >= 'a' && ch <= 'f')  *u |= ch - ('a' - 10);
+                else
+                {
+                    return NULL;
+                }
+            }
+            return &json_ref.context;
+        }
         static json_ret parse_string(json& json_ref,json_val &val) {
             if(*json_ref.context != '\"')
             {
@@ -656,6 +681,7 @@ namespace hzd {
             }
             json_ref.context += 1;
             std::string cur;
+            unsigned u,u2;
             while(true) {
                 char c = *(json_ref.context++);
                 switch (c) {
@@ -663,6 +689,79 @@ namespace hzd {
                         val = cur;
                         PARSE_WHITE_SPACE;
                         return JSON_OK;
+                    }
+                    case '\\' : {
+                        switch(*(json_ref.context++))
+                        {
+                            case '\"' : { cur.push_back('\"'); break; }
+                            case '\\' : { cur.push_back('\\'); break; }
+                            case '/' : { cur.push_back('/'); break; }
+                            case 'b' : { cur.push_back('\b'); break; }
+                            case 'f' : { cur.push_back('\f'); break; }
+                            case 'n' : { cur.push_back('\n'); break; }
+                            case 'r' : { cur.push_back('\r'); break; }
+                            case 't' : { cur.push_back('\t'); break; }
+                            case 'u' : {
+                                if(!parse_hex4(json_ref,&u))
+                                {
+                                    std::cerr << "hzd::json -> parse_hex4(u) 失败" <<std:: endl;
+                                    return JSON_PARSE_INVALID_UNICODE_SURROGATE;
+                                }
+                                if(u >= 0xD800 && u<= 0xDBFF)
+                                {
+                                    if(*(json_ref.context++) != '\\')
+                                    {
+                                        std::cerr << "hzd::json -> json_ref.context != \\" << std::endl;
+                                        return JSON_PARSE_INVALID_UNICODE_SURROGATE;
+                                    }
+                                    if(*(json_ref.context++) != 'u')
+                                    {
+                                        std::cerr << "hzd::json -> json_ref.context != u" <<std::endl;
+                                        return JSON_PARSE_INVALID_UNICODE_SURROGATE;
+                                    }
+                                    if(!parse_hex4(json_ref,&u2))
+                                    {
+                                        std::cerr << "hzd::json -> parse_hex4(u2) 失败" << std::endl;
+                                        return JSON_PARSE_INVALID_UNICODE_HEX;
+                                    }
+                                    if(u2 < 0xDC00 || u2 > 0xDFFF)
+                                    {
+                                        std::cerr << "hzd::json -> u2 error" << std::endl;
+                                        return JSON_PARSE_INVALID_UNICODE_SURROGATE;
+                                    }
+                                    u = (((u - 0xD800) << 10) | (u2 - 0xDC00)) + 0x10000;
+                                }
+                                if(u < 0x7F)
+                                {
+                                    cur.push_back(u&0xFF);
+                                }
+                                else if(u <= 0xFF)
+                                {
+                                    cur.push_back(0xC0 | ((u >> 6) & 0xFF));
+                                    cur.push_back(0x80 | ( u       & 0x3F));
+                                }
+                                else if(u <= 0xFFFF)
+                                {
+                                    cur.push_back(0xE0 | ((u >> 12) & 0xFF));
+                                    cur.push_back(0x80 | ((u >>  6) & 0x3F));
+                                    cur.push_back(0x80 | ( u        & 0x3F));
+                                }
+                                else
+                                {
+                                    assert(u <= 0x10FFFF);
+                                    cur.push_back(0xF0 | ((u >> 18) & 0xFF));
+                                    cur.push_back(0x80 | ((u >> 12) & 0x3F));
+                                    cur.push_back(0x80 | ((u >>  6) & 0x3F));
+                                    cur.push_back(0x80 | ( u        & 0x3F));
+                                }
+                                break;
+                            }
+                            default : {
+                                std::cout << "hzd::json -> parse_string_\\ default" <<std::endl;
+                                return JSON_PARSE_INVALID_UNICODE_SURROGATE;
+                            }
+                        }
+                        break;
                     }
                     case '\0' : {
                         std::cerr << "hzd::json -> 检测到 \\0" << std::endl;
@@ -821,6 +920,15 @@ namespace hzd {
                 }
             }
         }
+        static inline std::string get_level_str(int level)
+        {
+            std::string levelStr;
+            for (int i = 0; i < level; i++)
+            {
+                levelStr += "\t";
+            }
+            return levelStr;
+        }
     public:
         /**
          * @brief dump the json data to a string
@@ -914,6 +1022,51 @@ namespace hzd {
             return json_string;
         }
 
+        std::string format()
+        {
+            std::string s = dump();
+            std::string result;
+            int level = 0;
+            for(std::string::size_type index = 0;index < s.size();index++)
+            {
+                char c = s[index];
+                if(level > 0 && '\n' == s[s.size() - 1])
+                {
+                    result += get_level_str(level);
+                }
+                switch(c)
+                {
+                    case '[':
+                    case '{':{
+                        result += c;
+                        result += '\n';
+                        level++;
+                        result += get_level_str(level);
+                        break;
+                    }
+                    case ',':{
+                        result += c;
+                        result += '\n';
+                        result += get_level_str(level);
+                        break;
+                    }
+                    case ']':
+                    case '}':{
+                        result += '\n';
+                        level--;
+                        result += get_level_str(level);
+                        result += c;
+                        break;
+                    }
+                    default : {
+                        result += c;
+                        break;
+                    }
+                }
+            }
+            return result;
+        }
+
         /**
          * @brief load json by parse the json string
          * @note load json by parse the json string
@@ -971,7 +1124,7 @@ namespace hzd {
 
         friend std::ostream& operator<<(std::ostream& out,json& json_ref)
         {
-            out << json_ref.dump();
+            out << json_ref.format();
             return out;
         }
 
