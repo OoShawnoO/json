@@ -45,7 +45,7 @@ namespace hzd {
                 struct string {
                     char *data;
                     size_t size;
-                    __attribute__((unused)) size_t capacity{1};
+                    size_t capacity;
                     string() {
                         data = nullptr;
                         size = 0;
@@ -90,7 +90,7 @@ namespace hzd {
                         data[size++] = val;
                     }
 
-                    __attribute__((unused)) void push_back(json_val&& val)
+                    void push_back(json_val&& val)
                     {
                         JSON_ARRAY_REALLOC;
                         data[size++] = val;
@@ -130,12 +130,12 @@ namespace hzd {
                 if(type == json_type::JSON_JSON)
                 {
                     delete obj.v_json;
+                    type = json_type::JSON_NULL;
                 }
             }
 
         public:
             json_val() = default;
-
             ~json_val() {
                 if (type == json_type::JSON_STRING) {
                     delete[]obj.v_string.data;
@@ -190,25 +190,23 @@ namespace hzd {
             }                                                       \
         }                                                           \
         }while(0)
+            /**
+             * @brief json_val's constructors
+             * @note multiple construct function for different data type
+             * @param json_val&,int32_t,double,bool,const char*,const json&,initializer_list
+             * @retval None
+             */
 
-            json_val(const json_val &val) {
-                JSON_VAL_COPY;
-            }
-
+            json_val(const json_val &val) { JSON_VAL_COPY; }
             json_val(int32_t int_) noexcept : obj(int_) { type = json_type::JSON_INT; }
-
             json_val(double double_) noexcept : obj(double_) { type = json_type::JSON_DOUBLE; }
-
             json_val(bool bool_) noexcept : obj(bool_) { type = json_type::JSON_BOOL; }
-
             json_val(const char *str) noexcept : obj(str) { type = json_type::JSON_STRING; }
-
             json_val(const json& json_ref) {
                 type = json_type::JSON_JSON;
                 obj.v_json = new json();
                 *obj.v_json = json_ref;
             }
-
             json_val(::std::initializer_list<json_val> vals) {
                 type = json_type::JSON_ARRAY;
                 obj.v_array.data = new json_val[vals.size()];
@@ -219,27 +217,31 @@ namespace hzd {
                 }
             }
 
+            /**
+             * @brief operator = overload functions
+             * @note overload operator = for different data types
+             * @param int32_t,double,bool,const char*,string&,initializer_list<json_val>,nullptr,json_val&&,const json_val&
+             * @retval None
+             */
+
             json_val &operator=(int32_t int_) {
                 clear();
                 obj.v_int = int_;
                 type = json_type::JSON_INT;
                 return *this;
             }
-
             json_val &operator=(double double_) {
                 clear();
                 obj.v_double = double_;
                 type = json_type::JSON_DOUBLE;
                 return *this;
             }
-
             json_val &operator=(bool bool_) {
                 clear();
                 obj.v_bool = bool_;
                 type = json_type::JSON_BOOL;
                 return *this;
             }
-
             json_val &operator=(const char *str) {
                 clear();
                 type = json_type::JSON_STRING;
@@ -248,7 +250,6 @@ namespace hzd {
                 obj.v_string.size = strlen(str);
                 return *this;
             }
-
             json_val &operator=(std::string& str)
             {
                 clear();
@@ -258,7 +259,6 @@ namespace hzd {
                 obj.v_string.size = str.size();
                 return *this;
             }
-
             json_val &operator=(::std::initializer_list<json_val> vals) {
                 clear();
                 type = json_type::JSON_ARRAY;
@@ -270,13 +270,11 @@ namespace hzd {
                 }
                 return *this;
             }
-
             json_val &operator=(std::nullptr_t) {
                 clear();
                 type = json_type::JSON_NULL;
                 return *this;
             }
-
             json_val &operator=(json_val &&val) noexcept {
                 clear();
                 type = val.type;
@@ -296,6 +294,7 @@ namespace hzd {
                     case json_type::JSON_JSON : {
                         obj.v_json = val.obj.v_json;
                         val.obj.v_json = nullptr;
+                        break;
                     }
                     case json_type::JSON_INT : {
                         obj.v_int = val.obj.v_int;
@@ -315,38 +314,58 @@ namespace hzd {
                 }
                 return *this;
             }
-
             json_val &operator=(const json_val &val) {
                 clear();
                 JSON_VAL_COPY;
                 return *this;
             }
 
+            /**
+             * @brief operator different types cast function
+             * @note overload cast for different data types
+             * @param None
+             * @retval None
+             */
+
             operator int32_t() const {
                 assert(type == json_type::JSON_INT);
                 return obj.v_int;
             }
-
             operator double() const {
                 assert(type == json_type::JSON_DOUBLE);
                 return obj.v_double;
             }
-
             operator const char *() const {
                 assert(type == json_type::JSON_STRING);
+                assert(obj.v_string.data);
                 return obj.v_string.data;
             }
-
             operator ::std::string() const {
                 assert(type == json_type::JSON_STRING);
+                assert(obj.v_string.data);
                 return obj.v_string.data;
             }
-
             operator bool() const {
                 assert(type == json_type::JSON_BOOL);
                 return obj.v_bool;
             }
 
+            /**
+             * @brief overload [] for different data type
+             * @note overload [] for different data type
+             * @param int,size_t,const string,const char*
+             * @retval json_val&
+             */
+
+            json_val& operator [](int index) const
+            {
+                assert(type == JSON_ARRAY);
+                if(obj.v_array.size <= index) {
+                    std::cerr << "Out of bound" << std::endl;
+                    throw std::exception();
+                }
+                return obj.v_array.data[index];
+            }
             json_val& operator [](size_t index) const
             {
                 assert(type == JSON_ARRAY);
@@ -356,6 +375,23 @@ namespace hzd {
                 }
                 return obj.v_array.data[index];
             }
+            json_val& operator[](const std::string& key) const
+            {
+                assert(type == JSON_JSON);
+                return (*obj.v_json)[key];
+            }
+            json_val& operator[](const char* key) const
+            {
+                assert(type == JSON_JSON);
+                return (*obj.v_json)[key];
+            }
+
+            /**
+             * @brief overload ostream's << for json_val
+             * @note overload ostream's << for json_val
+             * @param ostream& out,json_val& val
+             * @retval ostream&
+             */
 
             friend ::std::ostream &operator<<(::std::ostream &out, json_val &val) {
                 switch (val.type) {
@@ -418,6 +454,13 @@ namespace hzd {
                 }
                 return out;
             }
+
+            /**
+             * @brief json_val's to_string function
+             * @note to_string function
+             * @param None
+             * @retval string
+             */
 
             std::string to_string() const
             {
@@ -486,20 +529,40 @@ namespace hzd {
                 throw std::exception();
             }
 
+            /**
+             * @brief type JSON_ARRAY can push the data to back of its data list
+             * @note push_back
+             * @param json_val& val_ref
+             * @retval None
+             */
+
             void push_back(json_val& val_ref)
             {
                 assert(type == JSON_ARRAY);
                 obj.v_array.push_back(val_ref);
             }
 
-            __attribute__((unused)) void push_back(json_val&& val_right_ref)
+            /**
+             * @brief type JSON_ARRAY can push the data to back of its data list
+             * @note use the right reference of its data
+             * @param json_val&& val_ref
+             * @retval None
+             */
+            void push_back(json_val&& val_right_ref)
             {
                 assert(type == JSON_ARRAY);
-                obj.v_array.push_back(val_right_ref);
+                obj.v_array.push_back(std::move(val_right_ref));
             }
         };
     public:std::unordered_map<json_key, json_val> json_data;
     private:std::string::iterator context;
+
+        /**
+         * @brief parse the white space such as \n \t ' ' \r
+         * @note use for skip the white space when parse json string
+         * @param json& json_ref
+         * @retval void
+         */
 
         static void parse_white_space(json &json_ref) {
             while (*json_ref.context == '\r'
@@ -510,6 +573,12 @@ namespace hzd {
             }
         }
 #define PARSE_WHITE_SPACE parse_white_space(json_ref)
+        /**
+         * @brief parse many types for json data
+         * @note parse many types for json data
+         * @param json& json_ref,json_val& val
+         * @retval json_ret
+         */
 
         static json_ret parse_null(json &json_ref, json_val &val) {
             if (*json_ref.context != 'n')
@@ -753,6 +822,13 @@ namespace hzd {
             }
         }
     public:
+        /**
+         * @brief dump the json data to a string
+         * @note dump json data
+         * @param None
+         * @retval string
+         */
+
         std::string dump() {
             if(json_data.empty()) return "{}";
             std::string json_string;
@@ -838,6 +914,12 @@ namespace hzd {
             return json_string;
         }
 
+        /**
+         * @brief load json by parse the json string
+         * @note load json by parse the json string
+         * @param string& str
+         * @retval bool
+         */
         bool load(std::string &str) {
             context = str.begin();
             json_val val;
