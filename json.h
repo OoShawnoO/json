@@ -1112,6 +1112,25 @@ namespace hzd {
             return load(json_string);
         }
 
+        /**
+         * @brief load json by file name
+         * @note load json by file name
+         * @param std::string file name
+         * @retval bool
+         */
+
+        bool load_by_file_name(std::string file_name)
+        {
+            std::ifstream in(file_name,std::ios::in);
+            if(!in.is_open())
+            {
+                std::cerr << "hzd::json -> 文件没有找到或无法打开 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
+                return false;
+            }
+            bool flag = load(in);
+            in.close();
+            return flag;
+        }
 
         json() = default;
 
