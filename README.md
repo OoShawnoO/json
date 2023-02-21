@@ -35,7 +35,8 @@
       {"array" : [5,6,7,"str",{"pair" : "value"}],"key1" : "value1"}
   ```
 
-- `` bool load(std::string)``
+- `` bool load(std::string&) ``
+- `` bool load(std::ifstream&) ``
 
 - ```std::string dump()```
 
