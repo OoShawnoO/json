@@ -1,6 +1,12 @@
+
+#ifndef _MSC_VER
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "DanglingPointer"
 #pragma ide diagnostic ignored "misc-no-recursion"
+#else
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #ifndef JSON_H
 #define JSON_H
 
@@ -649,8 +655,18 @@ namespace hzd {
             }
             char *end;
             double tmp;
+            #ifdef _MSC_VER
+            tmp = strtod(json_ref.context._Ptr,&end);
+            #else
             tmp = strtod(json_ref.context.base(), &end);
-            if (json_ref.context.base() == end) {
+            #endif
+            if (
+                    #ifdef _MSC_VER
+                    json_ref.context._Ptr == end
+                    #else
+                    json_ref.context.base() == end
+                    #endif
+                    ) {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
             }
@@ -659,8 +675,11 @@ namespace hzd {
             } else {
                 val = tmp;
             }
-
+            #ifdef _MSC_VER
+            json_ref.context += (end - json_ref.context._Ptr);
+            #else
             json_ref.context += (end - json_ref.context.base());
+            #endif
             PARSE_WHITE_SPACE;
             return JSON_OK;
         }
@@ -1190,4 +1209,6 @@ namespace hzd {
 
 #endif
 
+#ifndef _MSC_VER
 #pragma clang diagnostic pop
+#endif
