@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <streambuf>
+#include <sstream>
 #include <cstring>
 #include <initializer_list>
 #include <unordered_map>
@@ -478,10 +479,16 @@ namespace hzd {
                         return "null";
                     }
                     case json_type::JSON_INT: {
-                        return std::to_string(obj.v_int);
+                        std::ostringstream  stream;
+                        stream << obj.v_int;
+                        return stream.str();
+//                        return std::to_string(obj.v_int);
                     }
                     case json_type::JSON_DOUBLE: {
-                        return std::to_string(obj.v_double);
+                        std::ostringstream  stream;
+                        stream << obj.v_double;
+                        return stream.str();
+//                        return std::to_string(obj.v_double);
                     }
                     case json_type::JSON_BOOL: {
                         if (obj.v_bool)
