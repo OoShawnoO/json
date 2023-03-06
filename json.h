@@ -4,7 +4,7 @@
 #pragma ide diagnostic ignored "DanglingPointer"
 #pragma ide diagnostic ignored "misc-no-recursion"
 #else
-#define _CRT_SECURE_NO_WARNINGS
+#pragma warning(disable:4996)
 #endif
 
 #ifndef JSON_H
