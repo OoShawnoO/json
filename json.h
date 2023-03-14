@@ -22,6 +22,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <unordered_map>
+#include <vector>
 #include <cassert>
 
 namespace hzd {
@@ -232,6 +233,11 @@ namespace hzd {
                     obj.v_array.data[obj.v_array.size++] = val;
                 }
             }
+            json_val(::std::nullptr_t)
+            {
+                clear();
+                type = json_type::JSON_NULL;
+            }
 
             /**
              * @brief operator = overload functions
@@ -408,7 +414,6 @@ namespace hzd {
              * @param ostream& out,json_val& val
              * @retval ostream&
              */
-
             friend ::std::ostream &operator<<(::std::ostream &out, json_val &val) {
                 switch (val.type) {
                     case json_type::JSON_NULL: {
@@ -477,7 +482,6 @@ namespace hzd {
              * @param None
              * @retval string
              */
-
             std::string to_string() const
             {
                 switch (type) {
@@ -557,7 +561,6 @@ namespace hzd {
              * @param json_val& val_ref
              * @retval None
              */
-
             void push_back(json_val& val_ref)
             {
                 assert(type == JSON_ARRAY);
@@ -573,7 +576,45 @@ namespace hzd {
             void push_back(json_val&& val_right_ref)
             {
                 assert(type == JSON_ARRAY);
-                obj.v_array.push_back(std::move(val_right_ref));
+                obj.v_array.push_back(std::forward<json_val&&>(val_right_ref));
+            }
+
+            /**
+             * @brief return size of json_val
+             * @note None
+             * @param None
+             * @retval size_t
+             */
+            size_t size() const
+            {
+                if(type == JSON_ARRAY)
+                {
+                    return obj.v_array.size;
+                }
+                if(type == JSON_STRING)
+                {
+                    return obj.v_string.size;
+                }
+                return 0;
+            }
+
+            /**
+             * @brief return capacity of json_val
+             * @note None
+             * @param None
+             * @retval size_t
+             */
+            size_t capacity() const
+            {
+                if(type == JSON_ARRAY)
+                {
+                    return obj.v_array.capacity;
+                }
+                if(type == JSON_STRING)
+                {
+                    return obj.v_string.capacity;
+                }
+                return 0;
             }
         };
     public:std::unordered_map<json_key, json_val> json_data;
@@ -968,7 +1009,6 @@ namespace hzd {
          * @param None
          * @retval string
          */
-
         std::string dump() {
             if(json_data.empty()) return "{}";
             std::string json_string;
@@ -1106,6 +1146,7 @@ namespace hzd {
          * @retval bool
          */
         bool load(std::string &str) {
+            clear();
             context = str.begin();
             json_val val;
 
@@ -1125,7 +1166,6 @@ namespace hzd {
          * @param std::ifstream&
          * @retval bool
          */
-
         bool load(std::ifstream &in)
         {
             if(!in.is_open())
@@ -1144,7 +1184,6 @@ namespace hzd {
          * @param std::string file name
          * @retval bool
          */
-
         bool load_by_file_name(std::string file_name)
         {
             std::ifstream in(file_name,std::ios::in);
@@ -1174,7 +1213,7 @@ namespace hzd {
         }
 
         json_val &operator[](const json_key &key) {
-            return json_data[key];
+                return json_data[key];
         }
 
         json& operator=(const json& cp_json)
@@ -1200,6 +1239,51 @@ namespace hzd {
         }
 
         ~json() {
+            json_data.clear();
+        }
+
+        /**
+         * @brief find key from json_data if find return true else return false
+         * @note None
+         * @param std::string key
+         * @retval bool
+         */
+        bool has_key(std::string key) const
+        {
+            if(json_data.find(key) != json_data.end())
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /**
+         * @brief show keys in json
+         * @note None
+         * @param void
+         * @retval std::vector<std::string>
+         */
+         std::vector<std::string> keys()
+        {
+             std::vector<std::string> key;
+             for(auto it = json_data.begin();it != json_data.end();it++)
+             {
+                 key.emplace_back(it->first);
+             }
+             return key;
+        }
+
+        /**
+         * @brief clear data
+         * @note None
+         * @param void
+         * @retval void
+         */
+        void clear()
+        {
             json_data.clear();
         }
     };
