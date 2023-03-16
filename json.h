@@ -408,6 +408,46 @@ namespace hzd {
                 return (*obj.v_json)[key];
             }
 
+            bool operator==(std::string& s)
+            {
+                assert(type == JSON_STRING);
+                if(strcmp(obj.v_string.data,s.c_str()) == 0) return true;
+                else return false;
+            }
+            bool operator==(const char* s)
+            {
+                assert(type == JSON_STRING);
+                if(strcmp(obj.v_string.data,s) == 0) return true;
+                else return false;
+            }
+            bool operator==(char* s)
+            {
+                assert(type == JSON_STRING);
+                if(strcmp(obj.v_string.data,s) == 0) return true;
+                else return false;
+            }
+            bool operator==(int x)
+            {
+                assert(type == JSON_INT || type == JSON_DOUBLE);
+                if(type == JSON_DOUBLE)
+                    return obj.v_double == x;
+                else
+                    return obj.v_int == x;
+            }
+            bool operator==(double x)
+            {
+                assert(type == JSON_DOUBLE || type == JSON_INT);
+                if(type == JSON_DOUBLE)
+                    return obj.v_double == x;
+                else
+                    return obj.v_int == x;
+            }
+            bool operator==(bool b)
+            {
+                assert(type == JSON_BOOL);
+                return obj.v_bool == b;
+            }
+
             /**
              * @brief overload ostream's << for json_val
              * @note overload ostream's << for json_val
