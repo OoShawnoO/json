@@ -371,6 +371,11 @@ namespace hzd {
                 assert(type == json_type::JSON_BOOL);
                 return obj.v_bool;
             }
+            operator long long() const
+            {
+                assert(type == json_type::JSON_DOUBLE);
+                return (long long)obj.v_double;
+            }
 
             /**
              * @brief overload [] for different data type
