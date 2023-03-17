@@ -15,12 +15,12 @@
  * @brief json类
  */
 
-#include <iostream>
+//#include <iostream>
 #include <fstream>
-#include <streambuf>
+//#include <streambuf>
 #include <sstream>
 #include <cstring>
-#include <initializer_list>
+//#include <initializer_list>
 #include <unordered_map>
 #include <vector>
 #include <cassert>
@@ -413,25 +413,25 @@ namespace hzd {
                 return (*obj.v_json)[key];
             }
 
-            bool operator==(std::string& s)
+            bool operator==(std::string& s) const
             {
                 assert(type == JSON_STRING);
                 if(strcmp(obj.v_string.data,s.c_str()) == 0) return true;
                 else return false;
             }
-            bool operator==(const char* s)
+            bool operator==(const char* s) const
             {
                 assert(type == JSON_STRING);
                 if(strcmp(obj.v_string.data,s) == 0) return true;
                 else return false;
             }
-            bool operator==(char* s)
+            bool operator==(char* s) const
             {
                 assert(type == JSON_STRING);
                 if(strcmp(obj.v_string.data,s) == 0) return true;
                 else return false;
             }
-            bool operator==(int x)
+            bool operator==(int x) const
             {
                 assert(type == JSON_INT || type == JSON_DOUBLE);
                 if(type == JSON_DOUBLE)
@@ -439,7 +439,7 @@ namespace hzd {
                 else
                     return obj.v_int == x;
             }
-            bool operator==(double x)
+            bool operator==(double x) const
             {
                 assert(type == JSON_DOUBLE || type == JSON_INT);
                 if(type == JSON_DOUBLE)
@@ -447,7 +447,7 @@ namespace hzd {
                 else
                     return obj.v_int == x;
             }
-            bool operator==(bool b)
+            bool operator==(bool b) const
             {
                 assert(type == JSON_BOOL);
                 return obj.v_bool == b;
