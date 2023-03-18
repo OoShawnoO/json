@@ -582,7 +582,7 @@ namespace hzd {
                             {
                                 s += "\"";
                                 s += x.first;
-                                s += "\" : ";
+                                s += "\":";
                                 s += x.second.to_string();
                                 if(size-- > 1) s += ",";
                             }
@@ -1061,7 +1061,7 @@ namespace hzd {
                 json_string += "\"";
                 json_string += kv.first;
                 json_string += "\"";
-                json_string += " : ";
+                json_string += ":";
                 switch (kv.second.type)
                 {
                     case json_type::JSON_NULL:
