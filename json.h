@@ -381,7 +381,7 @@ namespace hzd {
              * @retval json_val&
              */
 
-            json_val& operator [](int index) const
+            json_val& operator[](int index) const
             {
                 assert(type == JSON_ARRAY);
                 if(obj.v_array.size <= index) {
@@ -390,7 +390,7 @@ namespace hzd {
                 }
                 return obj.v_array.data[index];
             }
-            json_val& operator [](size_t index) const
+            json_val& operator[](size_t index) const
             {
                 assert(type == JSON_ARRAY);
                 if(obj.v_array.size <= index) {
@@ -534,13 +534,11 @@ namespace hzd {
                         std::ostringstream  stream;
                         stream << obj.v_int;
                         return stream.str();
-//                        return std::to_string(obj.v_int);
                     }
                     case json_type::JSON_DOUBLE: {
                         std::ostringstream  stream;
                         stream << obj.v_double;
                         return stream.str();
-//                        return std::to_string(obj.v_double);
                     }
                     case json_type::JSON_BOOL: {
                         if (obj.v_bool)
@@ -595,6 +593,31 @@ namespace hzd {
                 }
                 std::cerr << "hzd::json -> 错误的to_string调用 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 throw std::exception();
+            }
+
+            /**
+            * @brief json_val's to_http_header function
+            * @note None
+            * @param None
+            * @retval string
+            */
+            std::string to_html_header() const
+            {
+                switch(type)
+                {
+                    case JSON_STRING : {
+                        return obj.v_string.data;
+                        break;
+                    }
+                    case JSON_INT : {
+                        return std::to_string(obj.v_int);
+                        break;
+                    }
+                    default: {
+                        std::cerr << "hzd::json -> 不适合to_html_header [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
+                        throw std::exception();
+                    }
+                }
             }
 
             /**
@@ -731,7 +754,7 @@ namespace hzd {
             return JSON_OK;
         }
         static json_ret parse_number(json &json_ref, json_val &val) {
-            if(*(json_ref.context) > '9' || *(json_ref.context) < '0')
+            if(*(json_ref.context) > '9' || *(json_ref.context) < '0' && *(json_ref.context) != '-' )
             {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
@@ -779,7 +802,7 @@ namespace hzd {
                 else if (ch >= 'a' && ch <= 'f')  *u |= ch - ('a' - 10);
                 else
                 {
-                    return NULL;
+                    return nullptr;
                 }
             }
             return &json_ref.context;
@@ -1226,7 +1249,7 @@ namespace hzd {
          * @param std::string file name
          * @retval bool
          */
-        bool load_by_file_name(std::string file_name)
+        bool load_by_file_name(const std::string& file_name)
         {
             std::ifstream in(file_name,std::ios::in);
             if(!in.is_open())
@@ -1290,7 +1313,7 @@ namespace hzd {
          * @param std::string key
          * @retval bool
          */
-        bool has_key(std::string key) const
+        bool has_key(const std::string& key) const
         {
             if(json_data.find(key) != json_data.end())
             {
@@ -1311,9 +1334,9 @@ namespace hzd {
          std::vector<std::string> keys()
         {
              std::vector<std::string> key;
-             for(auto it = json_data.begin();it != json_data.end();it++)
+             for(const auto & it : json_data)
              {
-                 key.emplace_back(it->first);
+                 key.emplace_back(it.first);
              }
              return key;
         }
@@ -1327,6 +1350,19 @@ namespace hzd {
         void clear()
         {
             json_data.clear();
+        }
+
+        std::string to_http_header()
+        {
+            std::string header;
+            for(const auto& item : json_data)
+            {
+                header += item.first;
+                header += ":";
+                header += item.second.to_html_header();
+                header += "\r\n";
+            }
+            return header;
         }
     };
 
