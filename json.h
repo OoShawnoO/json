@@ -107,7 +107,7 @@ namespace hzd {
                     void push_back(json_val&& val)
                     {
                         JSON_ARRAY_REALLOC;
-                        data[size++] = val;
+                        data[size++] = std::move(val);
                     }
                 } v_array;
 
@@ -607,11 +607,9 @@ namespace hzd {
                 {
                     case JSON_STRING : {
                         return obj.v_string.data;
-                        break;
                     }
                     case JSON_INT : {
                         return std::to_string(obj.v_int);
-                        break;
                     }
                     default: {
                         std::cerr << "hzd::json -> 不适合to_html_header [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
@@ -629,7 +627,7 @@ namespace hzd {
             void push_back(json_val& val_ref)
             {
                 assert(type == JSON_ARRAY);
-                obj.v_array.push_back(val_ref);
+                obj.v_array.push_back(std::forward<json_val&>(val_ref));
             }
 
             /**
@@ -691,70 +689,68 @@ namespace hzd {
          * @param json& json_ref
          * @retval void
          */
-
-        static void parse_white_space(json &json_ref) {
-            while (*json_ref.context == '\r'
-                   || *json_ref.context == '\n'
-                   || *json_ref.context == ' '
-                   || *json_ref.context == '\t') {
-                json_ref.context++;
+        void parse_white_space() {
+            while (*context == '\r'
+                   || *context == '\n'
+                   || *context == ' '
+                   || *context == '\t') {
+                context++;
             }
         }
-#define PARSE_WHITE_SPACE parse_white_space(json_ref)
+#define PARSE_WHITE_SPACE parse_white_space()
         /**
          * @brief parse many types for json data
          * @note parse many types for json data
-         * @param json& json_ref,json_val& val
+         * @param json& json_val& val
          * @retval json_ret
          */
-
-        static json_ret parse_null(json &json_ref, json_val &val) {
-            if (*json_ref.context != 'n')
+        json_ret parse_null(json_val &val) {
+            if (*context != 'n')
             {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" <<  std::endl;
                 return JSON_INVALID_VALUE;
             }
-            if (*(json_ref.context + 1) != 'u'
-                || *(json_ref.context + 2) != 'l'
-                || *(json_ref.context + 3) != 'l') {
+            if (*(context + 1) != 'u'
+                || *(context + 2) != 'l'
+                || *(context + 3) != 'l') {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
             }
-            json_ref.context += 4;
+            context += 4;
             PARSE_WHITE_SPACE;
             val = nullptr;
             return JSON_OK;
         }
-        static json_ret parse_bool(json &json_ref, json_val &val) {
-            if (*json_ref.context != 't' && *json_ref.context != 'f') {
+        json_ret parse_bool(json_val &val) {
+            if (*context != 't' && *context != 'f') {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
             }
-            if (*json_ref.context == 't') {
-                if (*(json_ref.context + 1) != 'r'
-                    || *(json_ref.context + 2) != 'u'
-                    || *(json_ref.context + 3) != 'e') {
+            if (*context == 't') {
+                if (*(context + 1) != 'r'
+                    || *(context + 2) != 'u'
+                    || *(context + 3) != 'e') {
                     return JSON_INVALID_VALUE;
                 }
                 val = true;
-                json_ref.context += 4;
+                context += 4;
             }
-            if (*json_ref.context == 'f') {
-                if (*(json_ref.context + 1) != 'a'
-                    || *(json_ref.context + 2) != 'l'
-                    || *(json_ref.context + 3) != 's'
-                    || *(json_ref.context + 4) != 'e') {
+            if (*context == 'f') {
+                if (*(context + 1) != 'a'
+                    || *(context + 2) != 'l'
+                    || *(context + 3) != 's'
+                    || *(context + 4) != 'e') {
                     std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                     return JSON_INVALID_VALUE;
                 }
                 val = false;
-                json_ref.context += 5;
+                context += 5;
             }
             PARSE_WHITE_SPACE;
             return JSON_OK;
         }
-        static json_ret parse_number(json &json_ref, json_val &val) {
-            if(*(json_ref.context) > '9' || *(json_ref.context) < '0' && *(json_ref.context) != '-' )
+        json_ret parse_number(json_val &val) {
+            if(*(context) > '9' || *(context) < '0' && *(context) != '-' )
             {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
@@ -762,15 +758,15 @@ namespace hzd {
             char *end;
             double tmp;
             #ifdef _MSC_VER
-            tmp = strtod(json_ref.context._Ptr,&end);
+            tmp = strtod(context._Ptr,&end);
             #else
-            tmp = strtod(json_ref.context.base(), &end);
+            tmp = strtod(context.base(), &end);
             #endif
             if (
                     #ifdef _MSC_VER
-                    json_ref.context._Ptr == end
+                    context._Ptr == end
                     #else
-                    json_ref.context.base() == end
+                    context.base() == end
                     #endif
                     ) {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
@@ -782,20 +778,19 @@ namespace hzd {
                 val = tmp;
             }
             #ifdef _MSC_VER
-            json_ref.context += (end - json_ref.context._Ptr);
+            context += (end - context._Ptr);
             #else
-            json_ref.context += (end - json_ref.context.base());
+            context += (end - context.base());
             #endif
             PARSE_WHITE_SPACE;
             return JSON_OK;
         }
-
-        static void* parse_hex4(json& json_ref,unsigned* u)
+        void* parse_hex4(unsigned* u)
         {
             int i;
             *u = 0;
             for (i = 0; i < 4; i++) {
-                char ch = *(json_ref.context++);
+                char ch = *(context++);
                 *u <<= 4;
                 if      (ch >= '0' && ch <= '9')  *u |= ch - '0';
                 else if (ch >= 'A' && ch <= 'F')  *u |= ch - ('A' - 10);
@@ -805,19 +800,19 @@ namespace hzd {
                     return nullptr;
                 }
             }
-            return &json_ref.context;
+            return &context;
         }
-        static json_ret parse_string(json& json_ref,json_val &val) {
-            if(*json_ref.context != '\"')
+        json_ret parse_string(json_val &val) {
+            if(*context != '\"')
             {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
             }
-            json_ref.context += 1;
+            context += 1;
             std::string cur;
             unsigned u,u2;
             while(true) {
-                char c = *(json_ref.context++);
+                char c = *(context++);
                 switch (c) {
                     case '\"' : {
                         val = cur;
@@ -825,7 +820,7 @@ namespace hzd {
                         return JSON_OK;
                     }
                     case '\\' : {
-                        switch(*(json_ref.context++))
+                        switch(*(context++))
                         {
                             case '\"' : { cur.push_back('\"'); break; }
                             case '\\' : { cur.push_back('\\'); break; }
@@ -836,24 +831,24 @@ namespace hzd {
                             case 'r' : { cur.push_back('\r'); break; }
                             case 't' : { cur.push_back('\t'); break; }
                             case 'u' : {
-                                if(!parse_hex4(json_ref,&u))
+                                if(!parse_hex4(&u))
                                 {
                                     std::cerr << "hzd::json -> parse_hex4(u) 失败 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" <<std:: endl;
                                     return JSON_PARSE_INVALID_UNICODE_SURROGATE;
                                 }
                                 if(u >= 0xD800 && u<= 0xDBFF)
                                 {
-                                    if(*(json_ref.context++) != '\\')
+                                    if(*(context++) != '\\')
                                     {
-                                        std::cerr << "hzd::json -> json_ref.context != \\ [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
+                                        std::cerr << "hzd::json -> context != \\ [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                                         return JSON_PARSE_INVALID_UNICODE_SURROGATE;
                                     }
-                                    if(*(json_ref.context++) != 'u')
+                                    if(*(context++) != 'u')
                                     {
-                                        std::cerr << "hzd::json -> json_ref.context != u [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" <<std::endl;
+                                        std::cerr << "hzd::json -> context != u [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" <<std::endl;
                                         return JSON_PARSE_INVALID_UNICODE_SURROGATE;
                                     }
-                                    if(!parse_hex4(json_ref,&u2))
+                                    if(!parse_hex4(&u2))
                                     {
                                         std::cerr << "hzd::json -> parse_hex4(u2) 失败 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                                         return JSON_PARSE_INVALID_UNICODE_HEX;
@@ -907,19 +902,19 @@ namespace hzd {
                 }
             }
         }
-        static json_ret parse_array(json& json_ref,json_val &val) {
-            if(*(json_ref.context) != '[')
+        json_ret parse_array(json_val &val) {
+            if(*(context) != '[')
             {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
             }
-            json_ref.context += 1;
+            context += 1;
             PARSE_WHITE_SPACE;
-            if(*(json_ref.context) == ']') {
+            if(*(context) == ']') {
                 val.type = json_type::JSON_ARRAY;
                 val.obj.v_array.data = nullptr;
                 val.obj.v_array.size = 0;
-                json_ref.context += 1;
+                context += 1;
                 PARSE_WHITE_SPACE;
                 return JSON_OK;
             }
@@ -928,19 +923,19 @@ namespace hzd {
                 json_val tmp_val;
                 json_ret ret;
                 PARSE_WHITE_SPACE;
-                if((ret = parse_value(json_ref,tmp_val)) != JSON_OK)
+                if((ret = parse_value(std::forward<json_val&>(tmp_val))) != JSON_OK)
                     return ret;
                 val.type = JSON_ARRAY;
-                val.push_back(tmp_val);
+                val.push_back(std::move(tmp_val));
                 PARSE_WHITE_SPACE;
-                if(*json_ref.context == ',')
+                if(*context == ',')
                 {
-                    json_ref.context += 1;
+                    context += 1;
                     PARSE_WHITE_SPACE;
                 }
-                else if(*json_ref.context == ']')
+                else if(*context == ']')
                 {
-                    json_ref.context += 1;
+                    context += 1;
                     val.type = json_type::JSON_ARRAY;
                     PARSE_WHITE_SPACE;
                     return JSON_OK;
@@ -952,16 +947,16 @@ namespace hzd {
                 }
             }
         }
-        static json_ret parse_string_raw(json& json_ref,std::string& str)
+        json_ret parse_string_raw(std::string& str)
         {
-            if(*json_ref.context != '\"')
+            if(*context != '\"')
             {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
             }
-            json_ref.context += 1;
+            context += 1;
             while(true) {
-                char c = *(json_ref.context++);
+                char c = *(context++);
                 switch (c) {
                     case '\"' : {
                         PARSE_WHITE_SPACE;
@@ -977,51 +972,51 @@ namespace hzd {
                 }
             }
         }
-        static json_ret parse_json(json& json_ref,json_val& val) {
-            if(*(json_ref.context) != '{')
+        json_ret parse_json(json_val& val) {
+            if(*(context) != '{')
             {
                 std::cerr << "hzd::json -> 非法字符 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return JSON_INVALID_VALUE;
             }
             json_ret ret;
-            json_ref.context += 1;
+            context += 1;
             PARSE_WHITE_SPACE;
             json* json_new = new json();
-            if(*(json_ref.context) == '}') {
-                json_ref.context += 1;
+            if(*(context) == '}') {
+                context += 1;
                 val.type = json_type::JSON_JSON;
                 val.obj.v_json = json_new;
                 return JSON_OK;
             }
             while(true) {
-                if(*(json_ref.context) != '\"') {
+                if(*(context) != '\"') {
                     std::cerr << "hzd::json -> 缺少 键 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                     ret = JSON_MISS_KEY;
                     break;
                 }
                 std::string cur;
-                if((ret = parse_string_raw(json_ref,cur)) != JSON_OK)
+                if((ret = parse_string_raw(std::forward<std::string&>(cur))) != JSON_OK)
                     break;
                 PARSE_WHITE_SPACE;
-                if(*json_ref.context != ':') {
+                if(*context != ':') {
                     std::cerr << "hzd::json -> 缺少 : [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                     ret = JSON_MISS_COLON;
                     break;
                 }
-                json_ref.context += 1;
+                context += 1;
                 PARSE_WHITE_SPACE;
                 json_val tmp;
-                if((ret = parse_value(json_ref,tmp)) != JSON_OK) {
+                if((ret = parse_value(std::forward<json_val&>(tmp))) != JSON_OK) {
                     break;
                 }
-                json_new->json_data.insert(std::pair<std::string,json_val>(cur,tmp));
+                json_new->json_data.emplace(std::pair<json_key,json_val>(cur,tmp));
                 PARSE_WHITE_SPACE;
-                if(*json_ref.context == ',') {
-                    json_ref.context += 1;
+                if(*context == ',') {
+                    context += 1;
                     PARSE_WHITE_SPACE;
                 }
-                else if(*json_ref.context == '}') {
-                    json_ref.context += 1;
+                else if(*context == '}') {
+                    context += 1;
                     val.type = json_type::JSON_JSON;
                     val.obj.v_json = json_new;
                     PARSE_WHITE_SPACE;
@@ -1039,23 +1034,23 @@ namespace hzd {
             delete json_new;
             return ret;
         }
-        static json_ret parse_value(json& json_ref,json_val& val) {
-            switch(*json_ref.context) {
+        json_ret parse_value(json_val& val) {
+            switch(*context) {
                 case '\n':
                 case '\t':
                 case '\r':{ PARSE_WHITE_SPACE; }
                 case 't' :
-                case 'f' : { return parse_bool(json_ref,val);}
-                case 'n' : { return parse_null(json_ref,val);}
-                case '\"' : { return parse_string(json_ref,val);}
-                case '[' : { return parse_array(json_ref,val);}
-                case '{' : { return parse_json(json_ref,val);}
+                case 'f' : { return parse_bool(std::forward<json_val&>(val));}
+                case 'n' : { return parse_null(std::forward<json_val&>(val));}
+                case '\"' : { return parse_string(std::forward<json_val&>(val));}
+                case '[' : { return parse_array(std::forward<json_val&>(val));}
+                case '{' : { return parse_json(std::forward<json_val&>(val));}
                 case '\0' :
                 {
                     std::cerr << "hzd::json -> 缺少解析所需的值 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                     return JSON_PARSE_EXPECT_VALUE;
                 }
-                default  : { return parse_number(json_ref,val);}
+                default  : { return parse_number(std::forward<json_val&>(val));}
             }
         }
         static inline std::string get_level_str(int level)
@@ -1215,7 +1210,7 @@ namespace hzd {
             context = str.begin();
             json_val val;
 
-            parse_value(*this,val);
+            parse_value(std::forward<json_val&>(val));
             if(val.type == JSON_JSON)
             {
                 *this = std::move(*val.obj.v_json);
@@ -1240,7 +1235,7 @@ namespace hzd {
             }
             std::string json_string((std::istreambuf_iterator<char>(in)),
                                     std::istreambuf_iterator<char>());
-            return load(json_string);
+            return load(std::forward<std::string&>(json_string));
         }
 
         /**
@@ -1257,7 +1252,7 @@ namespace hzd {
                 std::cerr << "hzd::json -> 文件没有找到或无法打开 [" << __func__ << "  文件:"<< __FILE__ << "  行号:" << __LINE__ << "]" << std::endl;
                 return false;
             }
-            bool flag = load(in);
+            bool flag = load(std::forward<std::ifstream&>(in));
             in.close();
             return flag;
         }
@@ -1266,14 +1261,14 @@ namespace hzd {
 
         json(const json& cp_json) {
             for (auto &p: cp_json.json_data) {
-                json_data.insert(p);
+                json_data.emplace(p);
             }
         }
 
         json(std::initializer_list<std::pair<json_key, json_val>> kvs) {
             json_data.clear();
             for (auto &kv: kvs) {
-                json_data.insert(kv);
+                json_data.emplace(kv);
             }
         }
 
@@ -1284,16 +1279,14 @@ namespace hzd {
         json& operator=(const json& cp_json)
         {
             for (auto &p: cp_json.json_data) {
-                json_data.insert(p);
+                json_data.emplace(p);
             }
             return *this;
         }
 
         json& operator=(json&& cp_json_right_ref) noexcept
         {
-            for (auto &&p: cp_json_right_ref.json_data) {
-                json_data.insert(std::move(p));
-            }
+            json_data = std::move(cp_json_right_ref.json_data);
             return *this;
         }
 
