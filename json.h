@@ -374,6 +374,10 @@ namespace hzd {
                 assert(type == json_type::JSON_DOUBLE);
                 return (long long)obj.v_double;
             }
+            operator short() const {
+                assert(type == json_type::JSON_INT);
+                return (short)obj.v_int;
+            }
 
             /**
              * @brief overload [] for different data type
